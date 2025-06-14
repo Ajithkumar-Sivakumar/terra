@@ -1,8 +1,8 @@
 provider "aws" {
-    region = "eu-north-1"
+    region = var.region
 }
 
-variable "create_instance" {
+/*variable "create_instance" {
   description = "to terminal the servers"
   type = bool
   default = false
@@ -16,30 +16,55 @@ resource "aws_instance" "test" {
 tags = {
   name = "test-${count.index}"
 }
+}*/
+
+data "aws_ami" "myubuntu" {
+  most_recent = true
+  owners = ["amazon"]
+  filter {
+    name = "name"
+    values = ["amzn2-ami-hvm-*-x86_64-gp2"]
+  } 
 }
+
+resource "aws_security_group" "mysecurity" {
+  name = "sg"
+  ingress {
+    from_port = 80
+    to_port = 80
+    protocol = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+    }
+  tags = {
+      name = "sg"
+    }
+  }
 
 resource "aws_instance" "test2" {
   count = 2
-  ami = "ami-05fcfb9614772f051"
-  instance_type = "t3.micro"
+  ami = data.aws_ami.myubuntu.id
+  instance_type = var.instance_type
+  key_name = "jenk"
 
 tags = {
   name ="test2-${count.index}"
 }
 }
 
-output "public_ips_test" {
+terraform {
+  backend "s3" {
+    bucket         = "aj-terraform-bucket-2025"
+    key            = "terraform.tfstate"
+    region         = "eu-north-1"
+    encrypt        = true
+    dynamodb_table = "terraform-state-lock"
+  }
+}
+
+/*output "public_ips_test" {
   value = aws_instance.test[*].public_ip
 }
 
 output "private_ips_test" {
   value = aws_instance.test[*].private_ip
-}
-
-output "public_ips_test2" {
-  value = aws_instance.test2[*].public_ip
-}
-
-output "private_ips_test2" {
-  value = aws_instance.test2[*].private_ip
-}
+}*/
